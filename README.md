@@ -99,4 +99,5 @@ To ensure sustainability and ease of maintenance, this project is documented acr
 
 1.  **README.md (This File):** Project vision, value proposition, and quick-start.
 2.  [**TECHNICAL_SPEC.md**](./docs/TECHNICAL_SPEC.md): Deep dive into the system architecture, design patterns, and ML methodology.
-3.  [**SOP_MAINTENANCE.md**](./docs/SOP_MAINTENANCE.md): Standard Operating Procedures for developers and ops teams (setup, model rotation, and troubleshooting).
+3.  [**SOP_MAINTENANCE.md**](./docs/SOP_MAINTENANCE.md): Standard Operating Procedures for developers and ops teams (setup, model rotation, troubleshooting, testing and extensibility).
+

@@ -411,6 +411,33 @@ class CachingHandler(BaseHandler):
 
 ---
 
+## 🧪 Testing
+
+The project includes a comprehensive test suite for unit, integration, and acceptance testing. 
+
+### Quick Test Commands
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests
+make test
+
+# Run with coverage report
+make test-cov-html
+
+# Run specific test category
+make test-unit        # Unit tests only
+make test-integration # Integration tests only
+```
+
+**Test Structure:**
+- Unit tests for individual components (preprocessing, models, routing, telemetry)
+- Integration tests for end-to-end pipelines
+- Mock fixtures for external APIs (GitHub, OpenRouter)
+- Coverage targets: 90%+ for core modules
+
 ## References
 - [TECHNICAL_SPEC.md](./TECHNICAL_SPEC.md): Detailed architecture and design patterns
 - [README.md](../README.md): Quick-start guide and project overview
