@@ -59,6 +59,8 @@ This will:
 - Train a TF-IDF + Logistic Regression model
 - Export `models/issue_classifier.joblib` and `models/issue_classifier.meta.json`
 
+For all available options, run: `python scripts/train_model.py --help`
+
 ### 3. Run the Triage Agent
 Once trained, deploy the agent to triage open issues:
 ```bash
@@ -67,11 +69,11 @@ python scripts/run_agent.py \
   --dry-run
 ```
 
-**Recommended flags for first deployment:**
-- `--dry-run`: Preview decisions without mutating GitHub
-- `--threshold 0.85`: Increase confidence threshold to be more conservative
-- `--allow-no-llm`: Disable LLM fallback (skip issues below local model threshold)
-- `--comment-on-high-confidence`: Post comments explaining auto-applied labels
+**Recommended workflow for first deployment:**
+1. Start with `--dry-run` to preview decisions without applying changes
+2. Use `--threshold 0.85` to be more conservative initially
+3. Use `--comment-on-high-confidence` to post explanatory comments
+4. Monitor logs at `logs/triage.jsonl` to validate decisions
 
 **Example - Conservative Dry-Run:**
 ```bash
@@ -88,6 +90,9 @@ python scripts/run_agent.py \
   --repos owner/repo1 owner/repo2
 ```
 
+For all available options, run: `python scripts/run_agent.py --help`  
+For troubleshooting and advanced configuration, see [SOP_MAINTENANCE.md](./docs/SOP_MAINTENANCE.md).
+
 ### 4. Monitor Outputs
 - **Telemetry Logs:** Check `logs/triage.jsonl` for decision history (importable to Looker Studio or Tableau)
 - **Console Output:** Real-time routing decisions and error logs
@@ -101,3 +106,8 @@ To ensure sustainability and ease of maintenance, this project is documented acr
 2.  [**TECHNICAL_SPEC.md**](./docs/TECHNICAL_SPEC.md): Deep dive into the system architecture, design patterns, and ML methodology.
 3.  [**SOP_MAINTENANCE.md**](./docs/SOP_MAINTENANCE.md): Standard Operating Procedures for developers and ops teams (setup, model rotation, troubleshooting, testing and extensibility).
 
+
+## 🔮 Future Roadmap: AutoMLOps Integration
+While the current architecture successfully bridges the gap between manual triage and automated routing, the next phase of development focuses on establishing a self-optimizing ML pipeline.
+
+* **Autonomous Model Research (RD-Agent):** I plan to integrate Microsoft's **RD-Agent** to act as an autonomous Data Scientist within the training environment. By decoupling the data ingestion from the training loop, RD-Agent will be able to iteratively experiment with `train_model.py`—autonomously testing different feature engineering techniques, n-gram ranges, and classifier algorithms (e.g., LightGBM, Random Forest)—to continuously maximize the F1-score of the local routing model without manual human intervention.

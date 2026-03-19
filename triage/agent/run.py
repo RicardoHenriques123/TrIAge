@@ -82,17 +82,68 @@ def build_chain(
 def main() -> None:
     """CLI entrypoint for the inference agent."""
 
-    parser = argparse.ArgumentParser(description="Run triage agent on GitHub issues")
-    parser.add_argument("--repos", nargs="+", required=True, help="owner/repo list")
-    parser.add_argument("--model-path", default=None)
-    parser.add_argument("--threshold", type=float, default=None)
-    parser.add_argument("--max-issues", type=int, default=None)
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--comment-on-high-confidence", action="store_true")
-    parser.add_argument("--label-allowlist", nargs="*", default=None)
-    parser.add_argument("--allow-no-llm", action="store_true")
-    parser.add_argument("--debug", action="store_true")
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Automatically classify and label GitHub issues using a hybrid ML routing engine.",
+        epilog="For detailed usage and examples, see README.md or run with --help.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--repos",
+        nargs="+",
+        required=True,
+        help="Target repositories (owner/repo format, space-separated).",
+    )
+    parser.add_argument(
+        "--model-path",
+        default=None,
+        help="Path to trained ML model (default: config MODEL_PATH).",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Confidence threshold (0.0-1.0) (default: config CONFIDENCE_THRESHOLD).",
+    )
+    parser.add_argument(
+        "--max-issues",
+        type=int,
+        default=None,
+        help="Limit issues processed per repository.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview decisions without applying labels or comments.",
+    )
+    parser.add_argument(
+        "--comment-on-high-confidence",
+        action="store_true",
+        help="Post comments explaining triage decisions.",
+    )
+    parser.add_argument(
+        "--label-allowlist",
+        nargs="*",
+        default=None,
+        help="Allowed labels (space-separated); uses all repo labels if omitted.",
+    )
+    parser.add_argument(
+        "--allow-no-llm",
+        action="store_true",
+        help="Use only local model; skip LLM fallback.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output and full error tracebacks.",
+    )
+    
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        if e.code != 0:
+            # argparse prints its own error message
+            pass
+        raise
 
     console_logger = setup_logger()
 
@@ -104,7 +155,13 @@ def main() -> None:
             raise RuntimeError("GITHUB_TOKEN is required.")
 
         adapter = GitHubAdapter(token=config.github_token, api_url=config.github_api_url)
-        repos = parse_repos(args.repos)
+        try:
+            repos = parse_repos(args.repos)
+        except ValueError as e:
+            console_logger.error("Invalid repository format: %s", e)
+            console_logger.error("Usage: --repos owner/repo [owner/repo ...]")
+            parser.print_usage()
+            raise SystemExit(1) from e
 
         if not config.openrouter_api_key and not args.allow_no_llm:
             raise RuntimeError("OPENROUTER_API_KEY is required for LLM fallback.")

@@ -115,15 +115,57 @@ def train_model(
 def main() -> None:
     """CLI entrypoint for training the local classifier."""
 
-    parser = argparse.ArgumentParser(description="Train local ML model for issue triage")
-    parser.add_argument("--repos", nargs="+", required=True, help="owner/repo list")
-    parser.add_argument("--output", default=None, help="Output model path")
-    parser.add_argument("--label-allowlist", nargs="*", default=None)
-    parser.add_argument("--max-issues", type=int, default=None)
-    parser.add_argument("--eval", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--debug", action="store_true")
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Train a TF-IDF + Logistic Regression classifier from labeled GitHub issues.",
+        epilog="For detailed usage and examples, see README.md or SOP_MAINTENANCE.md.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--repos",
+        nargs="+",
+        required=True,
+        help="Source repositories (owner/repo format, space-separated).",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Model output path (default: config MODEL_PATH).",
+    )
+    parser.add_argument(
+        "--label-allowlist",
+        nargs="*",
+        default=None,
+        help="Whitelisted labels (space-separated); uses all labels if omitted.",
+    )
+    parser.add_argument(
+        "--max-issues",
+        type=int,
+        default=None,
+        help="Limit labeled issues collected per repository.",
+    )
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Run train/test evaluation before final model training.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output and full error tracebacks.",
+    )
+    
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        if e.code != 0:
+            # argparse prints its own error message
+            pass
+        raise
 
     logger = setup_logger(verbose=args.verbose)
     start = time.time()
@@ -131,7 +173,13 @@ def main() -> None:
     try:
         config = load_config()
         adapter = GitHubAdapter(token=config.github_token, api_url=config.github_api_url)
-        repos = parse_repos(args.repos)
+        try:
+            repos = parse_repos(args.repos)
+        except ValueError as e:
+            logger.error("Invalid repository format: %s", e)
+            logger.error("Usage: --repos owner/repo [owner/repo ...]")
+            parser.print_usage()
+            raise SystemExit(1) from e
         logger.info("Starting training dataset build for %s repo(s)", len(repos))
 
         texts, labels = build_dataset(
@@ -163,8 +211,9 @@ def main() -> None:
             predictions = pipeline.predict(X_test)
             report = classification_report(y_test, predictions, zero_division=0)
             logger.info("Evaluation report:\n%s", report)
-        else:
-            pipeline = train_model(texts, labels, output_path=output_path, logger=logger)
+
+        logger.info("Training final production model on all %s samples...", len(texts))
+        pipeline = train_model(texts, labels, output_path=output_path, logger=logger)
 
         meta = {
             "labels": sorted(set(labels)),

@@ -292,25 +292,75 @@ def seed_issues(
 def main() -> None:
     """CLI entrypoint for demo repo creation."""
 
-    parser = argparse.ArgumentParser(description="Create a demo GitHub repo")
-    parser.add_argument("--repo", required=True, help="owner/name for the demo repo")
-    parser.add_argument("--org", default=None, help="Organization name if creating under org")
-    parser.add_argument("--private", action="store_true")
-    parser.add_argument("--allow-existing", action="store_true")
-    parser.add_argument("--skip-seed", action="store_true")
-    parser.add_argument("--description", default="Demo repo for triage automation")
-    parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
-    args = parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description="Create and seed a demo GitHub repository with sample issues for testing.",
+        epilog="For detailed setup instructions, see README.md.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--repo",
+        required=True,
+        help="Repository name (owner/name format).",
+    )
+    parser.add_argument(
+        "--org",
+        default=None,
+        help="Organization name (uses repo owner if omitted).",
+    )
+    parser.add_argument(
+        "--private",
+        action="store_true",
+        help="Create as private repository.",
+    )
+    parser.add_argument(
+        "--allow-existing",
+        action="store_true",
+        help="Seed issues/labels to existing repo instead of failing.",
+    )
+    parser.add_argument(
+        "--skip-seed",
+        action="store_true",
+        help="Create repo without seeding labels and issues.",
+    )
+    parser.add_argument(
+        "--description",
+        default="Demo repo for triage automation",
+        help="Repository description.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output and full error tracebacks.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging.",
+    )
+    
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        if e.code != 0:
+            # argparse prints its own error message
+            pass
+        raise
 
-    setup_logger(verbose=args.verbose)
+    logger = setup_logger(verbose=args.verbose)
 
     try:
         config = load_config()
         if not config.github_token:
             raise RuntimeError("GITHUB_TOKEN is required.")
 
-        repo_info = parse_repo(args.repo)
+        try:
+            repo_info = parse_repo(args.repo)
+        except ValueError as e:
+            logger.error("Invalid repository format: %s", e)
+            logger.error("Usage: --repo owner/name")
+            parser.print_usage()
+            raise SystemExit(1) from e
+        
         owner = args.org if args.org else repo_info["owner"]
         name = repo_info["name"]
 
